@@ -27,8 +27,10 @@ import { doc, getDoc } from "firebase/firestore";
 
 
 import HomeIcon from '@mui/icons-material/Home';
-import { Route, Routes } from 'react-router-dom';
+import { Route, Routes, useNavigate } from 'react-router-dom';
 import ListDetails from '../ListDetails/ListDetails';
+import HowtoDetailsPage from '../HowtoDetailsPage/HowtoDetailsPage';
+import SelectHowtoPage from '../SelectHowtoPage/SelectHowtoPage';
 
 function Copyright() {
   return (
@@ -175,7 +177,7 @@ const drawerWidth = 256;
 export default function Home() {
   const [isAddModalOpen, setIsAddModalOpen] = React.useState(false);
   const [isAddListLoading, setIsAddListLoading] = React.useState(false);
-
+  const navigate = useNavigate();
   const handleAddListSubmit = async (event) => {
     event.preventDefault();
     setIsAddListLoading(true);
@@ -191,6 +193,7 @@ export default function Home() {
       });
       console.log(newListRef.title);
       event.target.reset();
+      navigate(newListRef.id, { replace: true });
     } catch (e) {
       console.error("Error adding document: ", e);
     }
@@ -254,8 +257,11 @@ export default function Home() {
           <Box component="main" sx={{ flex: 1, py: 6, px: 4, bgcolor: '#eaeff1' }}>
             <Routes>
               <Route path="/" element={<Content />} />
-              <Route path="/:listId" element={<ListDetails />} />
-              <Route path="/:list_id/:howto_id" element={<h1>howto_id!</h1>} />
+              <Route path="/:listId" element={<ListDetails />}>
+                <Route index element={<SelectHowtoPage />} />
+                <Route path=":howtoId" element={<HowtoDetailsPage />} />
+              </Route>
+              {/* <Route path="/:list_id/:howto_id" element={<h1>howto_id!</h1>} /> */}
             </Routes>
           </Box>
           <Box component="footer" sx={{ p: 2, bgcolor: '#eaeff1' }}>

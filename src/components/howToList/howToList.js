@@ -12,6 +12,7 @@ import { AvatarGroup, Badge, Box, Link } from '@mui/material';
 import { deepOrange, deepPurple } from '@mui/material/colors';
 import PropTypes from 'prop-types';
 import { Draggable, Droppable } from 'react-beautiful-dnd';
+import { Link as Linka } from 'react-router-dom';
 
 const ExpandMore = styled((props) => {
     const { expand, ...other } = props;
@@ -43,7 +44,7 @@ export default function HowToList({
     const handleExpandClick = () => {
         setExpanded(!expanded);
     };
-
+    console.log(id);
     return (
         <Card sx={{
             // minHeight: '167px',
@@ -52,7 +53,8 @@ export default function HowToList({
                 titleTypographyProps={{
                     fontSize: theme.typography.subtitle1
                 }}
-                title={title}
+                title={<Linka to={id}>{title}</Linka>}
+
             />
             {
                 !!description &&

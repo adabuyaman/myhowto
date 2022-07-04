@@ -1,17 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import Grid from '@mui/material/Grid';
 import { useTheme } from '@mui/material/styles';
-import { Badge, Box, Button, CircularProgress, Divider, IconButton, List, ListItem, ListItemAvatar, ListItemButton, ListItemText, ListSubheader, Paper, Skeleton, styled, TextField, Tooltip, Typography } from '@mui/material';
-import { collection, doc, getDoc, getDocs, setDoc, updateDoc } from "firebase/firestore";
+import { Box, Button, Divider, Paper, styled } from '@mui/material';
+import { collection, doc, getDoc, getDocs, Timestamp, updateDoc } from "firebase/firestore";
 import { db } from '../../firebase/firestore';
-import { useParams } from 'react-router-dom';
-import { isEmpty } from '../../utils/objects';
-import parse from 'html-react-parser';
-import { Delete as DeleteIcon, Share as ShareIcon, Favorite as FavoriteIcon, Edit as EditIcon, Close, Check as CheckIcon, ThumbUpAlt, ThumbDownAlt, ThumbDownOffAlt, ThumbUpOffAlt } from '@mui/icons-material';
+import { Outlet, useNavigate, useParams } from 'react-router-dom';
 import { CKEditor } from '@ckeditor/ckeditor5-react';
 import ClassicEditor from '@ckeditor/ckeditor5-build-classic';
 import { getAuth } from 'firebase/auth';
-import { async } from '@firebase/util';
+import CollectionHowtosList from '../../components/CollectionHowtosList/CollectionHowtosList';
+import CollectionDetailsInfo from '../../components/CollectionDetailsInfo/CollectionDetailsInfo';
+import CollectionDetailsActions from '../../components/CollectionDetailsActions/CollectionDetailsActions';
+import "./ListDetails.scss";
+import { newHowtoTemp } from '../../dictionaries/newHowto';
+import { isEmpty } from '../../utils/objects';
 
 const CKEditorStyled = styled(CKEditor)(({ theme }) => ({
     '.ck-editor__main': {
@@ -23,26 +25,23 @@ const CKEditorStyled = styled(CKEditor)(({ theme }) => ({
 export default function ListDetails() {
     const theme = useTheme();
     const auth = getAuth();
+    const navigate = useNavigate();
+
+
     const { listId } = useParams();
 
-    const [isHowtoLoading, setIsHowtoLoading] = useState(true);
-
-    const [isListDetailsLoading, setIsListDetailsLoading] = useState(true);
+    const [isCollectionDetailsLoading, setIsCollectionDetailsLoading] = useState(true);
     const [isListHowtosLoading, setIsListHowtosLoading] = useState(true);
 
     const [listData, setListData] = useState({});
     const [listHowtos, setListHowtos] = useState([]);
 
-    const [selectedHowto, setSelectedHowto] = useState({});
-    const [selectedHowtoBody, setSelectedHowtoBody] = useState("");
-
-    const [isEditMode, setIsEditMode] = useState(true);
+    const [isEditMode, setIsEditMode] = useState(false);
     const [listEditedTitle, setListEditedTitle] = useState("");
     const [listEditedDescription, setListEditedDescription] = useState("");
     const [vote, setVote] = useState(undefined);
 
     const handleVoting = async (vote) => {
-        console.log('hiiiii', vote, selectedHowto.id);
         const howtoRef = doc(db, "lists", listId);
         console.log(howtoRef);
         await updateDoc(howtoRef, {
@@ -51,16 +50,34 @@ export default function ListDetails() {
             }
         });
         setVote(vote);
-    }
+        const updatedListData = { ...listData };
+        console.log('here');
+        updatedListData.votes[auth.currentUser.uid] = vote;
+        console.log('here2');
 
+        setListData(updatedListData);
+    }
 
     useEffect(() => {
         loadListDetails();
     }, []);
 
+
+    const downloadCollection = () => {
+        // window.html2canvas = html2canvas;
+        // const doc = new jsPDF();
+        // const html = new DOMParser().parseFromString(selectedHowtoBody, 'text/html');
+        // console.log(window.document);
+        // doc.html(html, {
+        //     x: 10,
+        //     y: 10
+        // });
+        // doc.save("a4.pdf");
+    }
+
     const loadListDetails = async () => {
         try {
-            setIsListDetailsLoading(true);
+            setIsCollectionDetailsLoading(true);
             const listRef = doc(db, "lists", listId);
             const listSnap = await getDoc(listRef);
             if (listSnap.exists()) {
@@ -73,9 +90,9 @@ export default function ListDetails() {
             }
         }
         catch (error) {
-
+            console.error('ERROR in loadListDetails', error);
         }
-        setIsListDetailsLoading(false);
+        setIsCollectionDetailsLoading(false);
     }
 
     const loadListHowtos = async () => {
@@ -95,28 +112,23 @@ export default function ListDetails() {
         setIsListHowtosLoading(false);
     }
 
-    const handleHowtoSelect = async (e) => {
-        setIsHowtoLoading(true);
-        const howtoRef = doc(db, `lists/${listId}/howtos/${e.currentTarget.getAttribute('dataid')}`);
-        const docSnap = await getDoc(howtoRef);
-        try {
-            if (docSnap.exists()) {
-                const data = docSnap.data();
-                setSelectedHowto({ ...data, id: docSnap.id });
-                setSelectedHowtoBody(data.body);
-            }
-        }
-        catch (error) {
-            console.log(error);
-        }
-        setIsHowtoLoading(false);
+    const saveHowto = async () => {
+        // console.log('Saving...');
+        // let contentNode = new DOMParser().parseFromString(selectedHowto.body, 'text/html');
+        // const title = contentNode.querySelector('h1,h2,h3,h4,h5,h6');
+        // await setDoc(doc(db, "lists", listId, "howtos", selectedHowto.id), { ...selectedHowto, title: title.textContent.trim() ?? selectedHowto.title });
     }
 
-    const saveHowto = async () => {
-        console.log('Saving...');
-        let contentNode = new DOMParser().parseFromString(selectedHowto.body, 'text/html');
-        const title = contentNode.querySelector('h1,h2,h3,h4,h5,h6');
-        await setDoc(doc(db, "lists", listId, "howtos", selectedHowto.id), { ...selectedHowto, title: title.textContent.trim() ?? selectedHowto.title });
+    const handleNewHowto = () => {
+        // col_ref.doc("LA").set({
+        //     name: "Los Angeles",
+        //     state: "CA",
+        //     country: "USA"
+        // })
+        const newHowto = { ...newHowtoTemp };
+        newHowto.created_at = Timestamp.fromDate(new Date());
+        setListHowtos([newHowto, ...listHowtos]);
+        navigate('new', { replace: true });
     }
 
     const handleListEdit = async (flag) => {
@@ -147,188 +159,65 @@ export default function ListDetails() {
                             p: theme.spacing(3),
                             display: 'grid',
                         }}>
-                            {
-                                !isListDetailsLoading ?
-                                    (
-                                        <>
-                                            {
-                                                isEditMode ?
-                                                    <>
-                                                        <TextField
-                                                            defaultValue={listData.title}
-                                                            onChange={(e) => setListEditedTitle(e.currentTarget.value)}
-                                                            sx={{
-                                                                margin: 0,
-                                                                mb: '5px',
-                                                                '& .MuiInputBase-root': {
-                                                                    marginRight: theme.spacing(-1),
-                                                                    marginLeft: theme.spacing(-1),
-                                                                    marginTop: '-3px',
-                                                                    padding: `0 ${theme.spacing(1)}`
-                                                                },
-                                                                '& input': {
-                                                                    fontSize: theme.typography.h4.fontSize,
-                                                                    padding: 0,
-                                                                }
-                                                            }}
-                                                            variant='filled'
-                                                        />
-                                                        <TextField
-                                                            multiline
-                                                            onChange={(e) => setListEditedDescription(e.currentTarget.value)}
-                                                            defaultValue={listData.description}
-                                                            sx={{
-                                                                margin: 0,
-                                                                padding: 0,
-                                                                '& .MuiInputBase-root': {
-                                                                    padding: `0 ${theme.spacing(1)}`,
-                                                                    marginRight: theme.spacing(-1),
-                                                                    marginLeft: theme.spacing(-1),
-                                                                },
-                                                                '& textarea': {
-                                                                    fontSize: theme.typography.body1.fontSize,
-                                                                    padding: 0,
-                                                                }
-                                                            }}
-                                                            variant='filled'
-                                                        />
-                                                    </>
-                                                    :
-                                                    <>
-                                                        <Typography variant="h4" sx={{ mb: '5px' }}>{listData.title}</Typography>
-                                                        <Typography variant="body1">{listData.description}</Typography>
-                                                    </>
-                                            }
-                                            <Box sx={{
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'flex-start',
-                                                gap: '10px',
-                                                mt: '10px'
-                                            }}>
-                                                <IconButton aria-label="delete">
-                                                    <Tooltip title="Share">
-                                                        <ShareIcon />
-                                                    </Tooltip>
-                                                </IconButton>
-
-                                                <Badge badgeContent={412} color={vote ? "success" : "info"}>
-                                                    <IconButton aria-label="vote-up" color={vote ? "success" : "default"} onClick={() => handleVoting(vote === true ? null : true)}>
-                                                        <Tooltip title="Vote up!">
-                                                            {
-                                                                vote ? <ThumbUpAlt /> : <ThumbUpOffAlt />
-                                                            }
-                                                        </Tooltip>
-                                                    </IconButton>
-                                                </Badge>
-                                                <IconButton aria-label="vote-down" color={vote === false ? "error" : "default"} onClick={() => handleVoting(vote === false ? null : false)}>
-                                                    <Tooltip title="Vote down!">
-                                                        {
-                                                            vote === false ? <ThumbDownAlt /> : <ThumbDownOffAlt />
-                                                        }
-                                                    </Tooltip>
-                                                </IconButton>
-
-                                                {
-                                                    isEditMode &&
-                                                    <>
-                                                        <IconButton sx={{ ml: 'auto' }} aria-label="edit" onClick={() => handleListEdit(true)}>
-                                                            <Tooltip title="Save updates" color='success'>
-                                                                <CheckIcon color='success' />
-                                                            </Tooltip>
-                                                        </IconButton>
-                                                        <IconButton aria-label="edit" onClick={() => handleListEdit(false)}>
-                                                            <Tooltip title="Discard changes">
-                                                                <Close />
-                                                            </Tooltip>
-                                                        </IconButton>
-                                                    </>
-                                                }
-                                            </Box>
-                                        </>
-                                    )
-                                    :
-                                    <>
-                                        <Skeleton variant="text" width={210} height={55} />
-                                        <Skeleton variant="text" />
-                                        <Skeleton width="60%" />
-
-                                        <Box sx={{
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'flex-start',
-                                            gap: '10px',
-                                            mt: '10px'
-                                        }}>
-                                            <Skeleton variant="circular" width={40} height={40} />
-                                            <Skeleton variant="circular" width={40} height={40} />
-                                            <Skeleton variant="circular" width={40} height={40} />
-                                        </Box>
-                                    </>
-                            }
-                            <Button disabled={isListDetailsLoading} sx={{
+                            <CollectionDetailsInfo
+                                setIsEditing={setIsEditMode}
+                                isLoading={isCollectionDetailsLoading}
+                                isEditing={isEditMode}
+                                title={listData.title}
+                                description={listData.description}
+                                onTitleChange={setListEditedTitle}
+                                onDescriptionChange={setListEditedDescription}
+                            />
+                            <CollectionDetailsActions
+                                onDownloadClick={downloadCollection}
+                                isLoading={isCollectionDetailsLoading}
+                                isEditing={isEditMode}
+                                vote={vote}
+                                onVoteChange={handleVoting}
+                                votes={listData.votes}
+                                onEditClick={handleListEdit}
+                            />
+                            <Button onClick={handleNewHowto} disabled={isCollectionDetailsLoading} sx={{
                                 mt: theme.spacing(2)
-                            }} variant="contained" >Add How-to</Button>
+                            }} variant="contained">Add How-to</Button>
                         </Box>
                         <Divider />
-                        <List sx={{ width: '100%', bgcolor: 'background.paper' }}
-                            subheader={
-                                <ListSubheader component="div">
-                                    How-tos
-                                </ListSubheader>
-                            }
-                        >
-                            {
-                                isListHowtosLoading ?
-                                    [1, 2, 3].map(item => <ListItem key={item} sx={{
-                                        px: theme.spacing(3),
-                                    }}>
-                                        <ListItemText primary={<Skeleton variant="text" width="50%" />} secondary={<Skeleton variant="text" />} />
-                                    </ListItem>)
-                                    :
-                                    listHowtos.map(({ id, title, created_at, votes }) =>
-                                        <ListItemButton dataid={id} key={id} sx={{
-                                            px: theme.spacing(3),
-                                        }}
-                                            onClick={handleHowtoSelect}
-                                        >
-                                            <ListItemText primary={title} secondary={`${created_at.toDate().getDate()}/${created_at.toDate().getMonth() + 1}/${created_at.toDate().getFullYear()} - ${created_at.toDate().toLocaleTimeString()}`} />
-                                        </ListItemButton>
-                                    )
-                            }
-                        </List>
+                        <CollectionHowtosList
+                            isLoading={isListHowtosLoading}
+                            howtos={listHowtos}
+                        />
                     </Paper>
                 </Grid>
-                <Grid item md={8}>
+                <Grid item md={8} className="howto__main">
                     {
-                        isEditMode ?
+                        false ?
                             <CKEditorStyled
                                 editor={ClassicEditor}
-                                data={selectedHowtoBody}
+                                // data={selectedHowtoBody}
                                 config={{
-                                    toolbar: ['heading', '|', 'bold', 'italic', 'link', 'bulletedList', 'numberedList', 'codeBlock'],
+                                    toolbar: ['heading', '|', 'bold', 'italic', 'link', 'bulletedList', 'numberedList', 'table'],
                                 }}
                                 onReady={editor => {
-                                    // You can store the "editor" and use when it is needed.
                                     console.log('Editor is ready to use!', editor);
                                 }}
-                                onChange={(event, editor) => {
-                                    const data = editor.getData();
-                                    const updated = { ...selectedHowto, body: data };
-                                    console.log('updated', updated);
-                                    if (!isEmpty(selectedHowto))
-                                        setSelectedHowto(updated);
-                                }}
+                                // onChange={(event, editor) => {
+                                //     const data = editor.getData();
+                                //     const updated = { ...selectedHowto, body: data };
+                                //     console.log('updated', updated);
+                                //     if (!isEmpty(selectedHowto))
+                                //         setSelectedHowto(updated);
+                                // }}
                                 onBlur={() => {
-                                    console.log(selectedHowto);
                                     saveHowto();
                                 }}
                             />
                             :
-                            <Paper sx={{
-                                p: theme.spacing(3)
-                            }}>
-                                {parse(selectedHowtoBody)}
+                            <Paper
+                                className="howto__main__content"
+                                sx={{
+                                    p: theme.spacing(3)
+                                }}>
+                                <Outlet />
                             </Paper>
                     }
                 </Grid>

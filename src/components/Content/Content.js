@@ -10,13 +10,13 @@ import { db } from '../../firebase/firestore';
 
 export default function Content() {
     const [lists, setLists] = React.useState([]);
+
     React.useEffect(() => {
         (async () => {
             const querySnapshot = await getDocs(collection(db, "lists"));
-            setLists(querySnapshot.docs.map(doc => doc.data()));
+            setLists(querySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })));
         })();
     }, []);
-
 
     const theme = useTheme();
     return (
